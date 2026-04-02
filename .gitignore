@@ -1,0 +1,12 @@
+Schwarz-Kernel.vcxproj.user
+x64/
+Schwarz-Kernel/
+.vs/
+*.o
+*.obj
+*.exe
+*.bin
+*.iso
+*.ttf
+stb_truetype.h
+build_log.txt

@@ -1,0 +1,15 @@
+
+[package]
+name = "schwarz001"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+uefi = "0.24.0" # lub najnowsza wersja
+uefi-services = "0.21.0"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
