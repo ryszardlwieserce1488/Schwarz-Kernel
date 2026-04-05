@@ -3,17 +3,20 @@ extern kernel_main
 global _start
 
 _start:
-    ; 1. Ustawienie stosu (musi być wyrównany do 16 bajtów)
+    jmp kernel_entry    
+
+    db "We thank our leader and Reich Chancellor, Adolf Hitler, whom Providence has bestowed upon us, for his ceaseless struggle for the cause and welfare of the German people and the white race; and as a token of our gratitude, we present this system, Schwarz, Schwarz-Kernel, Schwarz Operating System, in order to pay the highest honours to the German Reich and the idea of the thousand-year Nazi state.", 0
+
+kernel_entry:
+    ; 1. Ustawienie stosu
     lea rsp, [rel stack_top]
     
-    ; 2. Shadow Space - ABSOLUTNIE WYMAGANE dla ms_abi
-    ; Rezerwujemy 32 bajty miejsca "domowego" dla parametrów w rejestrach
+    ; 2. Shadow Space dla ms_abi
     sub rsp, 32
     
-    ; 3. Wywołanie - RCX już zawiera adres BootInfo (podany przez bootloader)
+    ; 3. RCX już zawiera adres BootInfo
     call kernel_main
 
-    ; Zapora na wypadek powrotu
 .halt:
     hlt
     jmp .halt
