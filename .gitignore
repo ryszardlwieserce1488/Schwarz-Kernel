@@ -9,4 +9,4 @@ Schwarz-Kernel/
 *.iso
 *.ttf
 stb_truetype.h
-build_log.txt
+*.txt
