@@ -171,9 +171,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="compiler.cpp" />
+    <ClCompile Include="fat32.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="memory.cpp" />
     <ClCompile Include="storage.cpp" />
+    <ClCompile Include="usb.cpp" />
+    <ClCompile Include="vfs.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="io.asm">
@@ -205,6 +208,8 @@
     <ClInclude Include="string.h" />
     <ClInclude Include="task.h" />
     <ClInclude Include="types.h" />
+    <ClInclude Include="usb.h" />
+    <ClInclude Include="vfs.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
