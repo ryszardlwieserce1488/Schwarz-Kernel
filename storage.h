@@ -44,6 +44,7 @@ struct DiskInfo {
     char filesystem[16];
     uint32_t partition_count;
     DiskPartitionInfo partitions[8];
+    uint32_t usb_device_index; // index w g_xhci[0].devices[]
 };
 
 struct UnsupportedControllerInfo {
@@ -64,3 +65,4 @@ const char* storage_partition_style_name(PartitionStyle style);
 const char* storage_boot_fs_name(uint32_t fs_kind);
 uint32_t storage_unsupported_count();
 const UnsupportedControllerInfo* storage_get_unsupported(uint32_t index);
+void storage_register_usb_disk(uint32_t usb_device_index, uint64_t sector_count, uint32_t sector_size);

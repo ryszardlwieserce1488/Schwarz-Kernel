@@ -425,6 +425,7 @@ void shell_ensure_usb_ready() {
 void shell_ensure_vfs_ready() {
     if (vfs_ready) return;
     shell_ensure_storage_ready();
+    shell_ensure_usb_ready();  // ← dodaj to!
     vfs_init();
     vfs_ready = true;
     if (vfs_drive_count() > 0) {
@@ -886,7 +887,19 @@ void cmd_dir(const char* line) {
         shell_println("Niepoprawna sciezka.");
         return;
     }
-
+    // debug
+    for (uint32_t ci = 0; ci < usb_xhci_count(); ci++) {
+        const UsbXhciControllerInfo* ctrl = usb_get_xhci(ci);
+        for (uint32_t di = 0; di < ctrl->device_count; di++) {
+            const UsbDeviceInfo* dev = &ctrl->devices[di];
+            shell_print("dev present=");
+            shell_print(dev->present ? "1" : "0");
+            shell_print(" mass=");
+            shell_print(dev->is_mass_storage ? "1" : "0");
+            shell_print(" bulk_cfg=");
+            shell_println(dev->bulk_configured ? "1" : "0");
+        }
+    }
     VfsDirEntry entries[64] = {};
     uint32_t count = 0;
     if (!vfs_list_dir(resolved, entries, 64, &count)) {
@@ -1007,7 +1020,7 @@ void cmd_usb() {
         shell_print(", slots ");
         itoa_dec(ctrl->max_slots, num);
         shell_println(num);
-
+/*
         shell_println("  before handoff:");
         for (uint32_t p = 0; p < ctrl->max_ports && p < USB_MAX_PORTS; p++) {
             const UsbPortInfo* port = &ctrl->ports_before_handoff[p];
@@ -1051,7 +1064,7 @@ void cmd_usb() {
             }
             shell_putchar('\n');
         }
-
+        */
         if (ctrl->device_count > 0) {
             shell_println("  devices:");
             for (uint32_t d = 0; d < ctrl->device_count && d < USB_MAX_DEVICES; d++) {
@@ -1065,7 +1078,7 @@ void cmd_usb() {
                 shell_print(num);
                 shell_print(", ");
                 shell_print(dev->addressed ? "addressed" : "slot-only");
-                shell_print(", speed ");
+             /*   shell_print(", speed ");
                 shell_print(usb_speed_name(dev->speed_id));
                 if (!dev->addressed && dev->address_completion_code != 0) {
                     shell_print(", address-cc ");
@@ -1162,6 +1175,113 @@ void cmd_usb() {
                         itoa_dec(dev->config_first_types[ti], num);
                         shell_print(num);
                     }
+                }
+                if (dev->bulk_in_endpoint || dev->bulk_out_endpoint) {
+                    shell_print(", bulk-in ep");
+                    itoa_dec(dev->bulk_in_endpoint, num);
+                    shell_print(num);
+                    shell_print(" mps");
+                    itoa_dec(dev->bulk_in_max_packet, num);
+                    shell_print(num);
+                    shell_print(", bulk-out ep");
+                    itoa_dec(dev->bulk_out_endpoint, num);
+                    shell_print(num);
+                    shell_print(" mps");
+                    itoa_dec(dev->bulk_out_max_packet, num);
+                    shell_print(num);
+                }
+                shell_print(dev->bulk_configured ? ", bulk-cfg-ok" : ", bulk-cfg-FAIL");
+                shell_print(", bulk-cfg-cc ");
+                itoa_dec(dev->bulk_cfg_completion_code, num);
+                shell_print(num);
+                // tymczasowo
+                shell_print(", cfg-ep-out-ctx ");
+                itoa_dec(dev->bulk_cfg_ep_out_ctx, num); shell_print(num);
+                shell_print(", cfg-ep-in-ctx ");
+                itoa_dec(dev->bulk_cfg_ep_in_ctx, num);  shell_print(num);
+                shell_print(", cfg-icc1 ");
+                itoa_hex16((uint16_t)(dev->bulk_cfg_icc1 >> 16), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->bulk_cfg_icc1 & 0xFFFF), num); shell_print(num);
+                shell_print(", cfg-entries ");
+                itoa_dec(dev->bulk_cfg_entries, num);    shell_print(num);
+                shell_print(", bot-phase ");
+                itoa_dec(dev->bot_cbw_phase, num); shell_print(num);
+                shell_print(", csw-sig ");
+                itoa_hex16((uint16_t)(dev->bot_csw_sig >> 16), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->bot_csw_sig & 0xFFFF), num); shell_print(num);
+                shell_print(", csw-status ");
+                itoa_dec(dev->bot_csw_status, num); shell_print(num);
+                shell_print(", bulk-out-cc ");
+                itoa_dec(dev->bot_bulk_out_cc, num); shell_print(num);
+                shell_print(", bulk-in-cc ");
+                itoa_dec(dev->bot_bulk_in_cc, num); shell_print(num);
+                shell_print(", dbg-evt-type ");
+                itoa_dec(dev->dbg_event_type, num); shell_print(num);
+                shell_print(", dbg-evt-ptr ");
+                itoa_hex16((uint16_t)(dev->dbg_event_ptr_hi >> 16), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_event_ptr_hi & 0xFFFF), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_event_ptr_lo >> 16), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_event_ptr_lo & 0xFFFF), num); shell_print(num);
+                shell_print(", dbg-tgt-ptr ");
+                itoa_hex16((uint16_t)(dev->dbg_target_hi >> 16), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_target_hi & 0xFFFF), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_target_lo >> 16), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_target_lo & 0xFFFF), num); shell_print(num);
+                shell_print(", dbg-ring ");
+                itoa_hex16((uint16_t)(dev->dbg_ring_hi), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_ring_lo >> 16), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_ring_lo & 0xFFFF), num); shell_print(num);
+                shell_print(", dbg-idx ");
+                itoa_dec(dev->dbg_idx, num); shell_print(num);
+                shell_print(", dbg-in-idx ");
+                itoa_dec(dev->dbg_in_idx, num); shell_print(num);
+                shell_print(", dbg-in-tgt ");
+                itoa_hex16((uint16_t)(dev->dbg_in_target_lo >> 16), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_in_target_lo & 0xFFFF), num); shell_print(num);
+                shell_print(", dbg-in-evt-type ");
+                itoa_dec(dev->dbg_in_event_type, num); shell_print(num);
+                shell_print(", dbg-in-evt-ptr ");
+                itoa_hex16((uint16_t)(dev->dbg_in_event_ptr_lo >> 16), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_in_event_ptr_lo & 0xFFFF), num); shell_print(num);
+                shell_print(", dbg-in-ring ");
+                itoa_hex16((uint16_t)(dev->dbg_in_ring_lo >> 16), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_in_ring_lo & 0xFFFF), num); shell_print(num);
+                shell_print(", dbg-in-trb-ctrl ");
+                itoa_hex16((uint16_t)(dev->dbg_in_trb_ctrl >> 16), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_in_trb_ctrl & 0xFFFF), num); shell_print(num);
+                shell_print(", dbg-in-trb-stat ");
+                itoa_hex16((uint16_t)(dev->dbg_in_trb_stat >> 16), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_in_trb_stat & 0xFFFF), num); shell_print(num);
+                shell_print(", dbg-in-trb-p0 ");
+                itoa_hex16((uint16_t)(dev->dbg_in_trb_p0 >> 16), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_in_trb_p0 & 0xFFFF), num); shell_print(num);
+                shell_print(", dbg-cfg-in-ring-lo ");
+                itoa_hex16((uint16_t)(dev->dbg_cfg_in_ring_lo >> 16), num); shell_print(num);
+                itoa_hex16((uint16_t)(dev->dbg_cfg_in_ring_lo & 0xFFFF), num); shell_print(num); */
+                if (dev->disk_block_size) {
+                    shell_print(", disk-lba ");
+                    itoa_dec(dev->disk_last_lba, num);
+                    shell_print(num);
+                    shell_print(" blksz ");
+                    itoa_dec(dev->disk_block_size, num);
+                    shell_print(num);
+                    shell_print(dev->disk_read_ok ? ", sector0-ok [" : ", sector0-fail");
+                    if (dev->disk_read_ok) {
+                        shell_println(", sector0:");
+                        char hx[4];
+                        for (uint32_t row = 0; row < 32; row++) {
+                            shell_print("    ");
+                            for (uint32_t col = 0; col < 16; col++) {
+                                itoa_hex8(dev->disk_sector0[row * 16 + col], hx);
+                                shell_print(hx);
+                                shell_print(" ");
+                            }
+                            shell_putchar('\n');
+                        }
+                    }
+                }
+                else {
+					shell_print(", no-disk-block-size");
                 }
                 shell_putchar('\n');
             }

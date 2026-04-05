@@ -106,7 +106,7 @@ static uint32_t first_sector_of_cluster(const Fat32Mount* mount, uint32_t cluste
 }
 
 static bool read_fat_entry(const Fat32Mount* mount, uint32_t cluster, uint32_t* out_next) {
-    uint8_t sector[512];
+    alignas(512) alignas(512) uint8_t sector[512];
     uint64_t fat_offset = (uint64_t)cluster * 4;
     uint64_t sector_lba = mount->fat_start_lba + (fat_offset / mount->bytes_per_sector);
     uint32_t offset = (uint32_t)(fat_offset % mount->bytes_per_sector);
@@ -228,7 +228,7 @@ static bool next_component(const char** path, char* out, uint32_t cap) {
 }
 
 static bool find_in_directory(const Fat32Mount* mount, uint32_t start_cluster, const char* component, FatDirEntry83* out_entry) {
-    uint8_t sector[512];
+    alignas(512) alignas(512) uint8_t sector[512];
     uint32_t cluster = start_cluster;
     char long_name[256];
     clear_lfn_state(long_name);
@@ -292,7 +292,7 @@ static const Fat32Mount* mount_for_drive(const VfsDriveInfo* drive) {
 }
 
 bool fat32_try_mount(uint32_t disk_index, int32_t partition_index, char drive_letter, VfsDriveInfo* out_info) {
-    uint8_t sector[512];
+    alignas(512) alignas(512) uint8_t sector[512];
     bool ok = false;
     uint64_t base_lba = 0;
 
@@ -362,7 +362,7 @@ bool fat32_list_dir(const VfsDriveInfo* drive, const char* subpath, VfsDirEntry*
     uint32_t dir_cluster = is_root ? mount->root_cluster : entry_cluster(&resolved);
     if (!is_root && (resolved.attr & 0x10) == 0) return false;
 
-    uint8_t sector[512];
+    alignas(512) alignas(512) uint8_t sector[512];
     uint32_t cluster = dir_cluster;
     uint32_t count = 0;
     char long_name[256];
@@ -420,7 +420,7 @@ bool fat32_read_file(const VfsDriveInfo* drive, const char* subpath, void* buffe
 
     uint8_t* out = (uint8_t*)buffer;
     uint32_t written = 0;
-    uint8_t sector[512];
+    alignas(512) alignas(512) uint8_t sector[512];
     uint32_t cluster = entry_cluster(&entry);
 
     while (cluster >= 2 && !is_end_of_chain(cluster) && written < file_size) {

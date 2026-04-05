@@ -1,6 +1,6 @@
 #include "storage.h"
 #include "memory.h"
-
+#include "usb.h"
 extern "C" uint8_t inb(uint16_t port);
 extern "C" uint16_t inw(uint16_t port);
 extern "C" uint32_t inl(uint16_t port);
@@ -181,6 +181,7 @@ enum DiskBackend : uint8_t {
     DISK_BACKEND_AHCI = 1,
     DISK_BACKEND_IDE = 2,
     DISK_BACKEND_NVME = 3,
+    DISK_BACKEND_USB = 4,
 };
 
 struct IdeChannel {
@@ -848,6 +849,9 @@ static bool disk_read_sector(const DiskInfo* disk, uint64_t lba, void* buffer) {
         if (!nvme->mmio || nvme->lba_size != 512) return false;
         return nvme_read_one_sector(nvme, lba, buffer);
     }
+    if (g_disk_backends[index] == DISK_BACKEND_USB) {
+        return usb_read_disk_sector(disk->usb_device_index, lba, buffer);
+    }
     return false;
 }
 
@@ -1281,4 +1285,20 @@ uint32_t storage_unsupported_count() {
 const UnsupportedControllerInfo* storage_get_unsupported(uint32_t index) {
     if (index >= g_unsupported_count) return nullptr;
     return &g_unsupported[index];
+}
+void storage_register_usb_disk(uint32_t usb_device_index, uint64_t sector_count, uint32_t sector_size) {
+    if (g_disk_count >= kMaxDisks) return;
+    uint32_t disk_index = g_disk_count;
+    DiskInfo* disk = &g_disks[disk_index];
+    clear_disk_info(disk);
+    fill_disk_name(disk, disk_index);
+    copy_cstr(disk->transport, "USB", sizeof(disk->transport));
+    disk->removable = true;
+    disk->sector_size = sector_size;
+    disk->sector_count = sector_count;
+    disk->usb_device_index = usb_device_index;
+    g_disk_backends[disk_index] = DISK_BACKEND_USB;
+    g_disk_count = disk_index + 1;
+    detect_partition_table(disk);
+    disk->present = true;
 }
