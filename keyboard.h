@@ -38,8 +38,6 @@ const uint8_t kb_scancode_map_shift[128] = {
     0,0,0,0,0,0,0,0,0
 };
 
-// Polski Programisty: lewa Alt + scancode → codepoint
-// Małe i wielkie litery obsługuje shift_pressed
 struct AltPolishEntry { uint8_t code; uint32_t cp_lower; uint32_t cp_upper; };
 
 static const AltPolishEntry kb_alt_polish[] = {
@@ -103,13 +101,11 @@ static inline void keyboard_handle_byte(uint8_t sc) {
     const bool released = sc & 0x80;
     const uint8_t code = sc & 0x7F;
 
-    // Modyfikatory
     if (code == SC_LSHIFT || code == SC_RSHIFT) { shift_pressed = !released; return; }
     if (code == SC_LCTRL) { ctrl_pressed = !released; return; }
     if (code == SC_LALT) { alt_pressed = !released; return; }
     if (released) return;
 
-    // Ctrl+Alt+Del → reset
     if (ctrl_pressed && alt_pressed && code == 0x53) { reboot(); }
     if (extended) {
         if (!released) {
@@ -126,7 +122,6 @@ static inline void keyboard_handle_byte(uint8_t sc) {
         return;
     }
 
-    // Alt wciśnięty → szukaj polskiego znaku
     if (alt_pressed) {
         for (int i = 0; kb_alt_polish[i].code != 0; i++) {
             if (kb_alt_polish[i].code == code) {
@@ -135,11 +130,10 @@ static inline void keyboard_handle_byte(uint8_t sc) {
                 return;
             }
         }
-        // Alt + coś innego — ignoruj (nie wpadnie niechciany znak)
+      
         return;
     }
 
-    // Zwykłe znaki ASCII
     uint32_t c = 0;
     if (code == SC_ESC)       c = 27;
     else if (code == SC_BACKSPACE) c = '\b';

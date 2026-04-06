@@ -131,33 +131,53 @@ void draw_cursor(int32_t x, int32_t y, uint32_t color) {
     }
 }
 
-void cursor_erase() {
-    if (!cursor_saved_valid || cursor_prev_x < 0 || cursor_prev_y < 0) return;
-    for (int dy = -2; dy <= 2; dy++) {
-        for (int dx = -2; dx <= 2; dx++) {
-            int32_t px = cursor_prev_x + dx;
-            int32_t py = cursor_prev_y + dy;
-            if (px >= 0 && px < (int32_t)g_width && py >= 0 && py < (int32_t)(g_max_y + 10)) {
-                g_fb[py * g_width + px] = cursor_saved[dy + 2][dx + 2];
-            }
-        }
-    }
-    cursor_saved_valid = false;
-}
 
+const char windows_cursor[19][12] = {
+    {1,1,0,0,0,0,0,0,0,0,0,0},
+    {1,2,1,0,0,0,0,0,0,0,0,0},
+    {1,2,2,1,0,0,0,0,0,0,0,0},
+    {1,2,2,2,1,0,0,0,0,0,0,0},
+    {1,2,2,2,2,1,0,0,0,0,0,0},
+    {1,2,2,2,2,2,1,0,0,0,0,0},
+    {1,2,2,2,2,2,2,1,0,0,0,0},
+    {1,2,2,2,2,2,2,2,1,0,0,0},
+    {1,2,2,2,2,2,2,2,2,1,0,0},
+    {1,2,2,2,2,2,2,2,2,2,1,0},
+    {1,2,2,2,2,2,1,1,1,1,1,1},
+    {1,2,2,1,2,2,1,0,0,0,0,0},
+    {1,2,1,0,1,2,2,1,0,0,0,0},
+    {1,1,0,0,1,2,2,1,0,0,0,0},
+    {0,0,0,0,0,1,2,2,1,0,0,0},
+    {0,0,0,0,0,1,2,2,1,0,0,0},
+    {0,0,0,0,0,0,1,1,0,0,0,0}
+};
 void cursor_draw() {
-    uint32_t color = mouse.left ? 0xFF0000 : 0xFFFFFF;  // czerwony gdy klik
-    for (int dy = -2; dy <= 2; dy++) {
-        for (int dx = -2; dx <= 2; dx++) {
+    uint32_t click_color = mouse.left ? 0xFF0000 : 0xFFFFFF;
+
+    for (int dy = 0; dy < 19; dy++) {
+        for (int dx = 0; dx < 12; dx++) {
             int32_t px = mouse.x + dx;
             int32_t py = mouse.y + dy;
+
+            // Używamy Twojego sprawdzenia krawędzi:
             if (px < 0 || px >= (int32_t)g_width || py < 0 || py >= (int32_t)(g_max_y + 10)) {
-                cursor_saved[dy + 2][dx + 2] = 0;
                 continue;
             }
-            cursor_saved[dy + 2][dx + 2] = g_fb[py * g_width + px];
-            if ((dy == 0) || (dx == 0)) {
-                g_fb[py * g_width + px] = color;
+
+            // 1. Pobieramy typ piksela z tablicy windows_cursor (którą wrzuciłem wcześniej)
+            char pixel_type = windows_cursor[dy][dx];
+
+            if (pixel_type == 0) continue; // Przezroczyste - nie dotykamy FB ani nie zapisujemy tła
+
+            // 2. Zapisujemy tło tylko dla nieprzezroczystych pikseli kursora
+            cursor_saved[dy][dx] = g_fb[py * g_width + px];
+
+            // 3. Rysujemy na ekranie
+            if (pixel_type == 1) {
+                g_fb[py * g_width + px] = 0x000000; // Czarna obwódka
+            }
+            else if (pixel_type == 2) {
+                g_fb[py * g_width + px] = click_color; // Białe/Czerwone wnętrze
             }
         }
     }
@@ -165,7 +185,28 @@ void cursor_draw() {
     cursor_prev_x = mouse.x;
     cursor_prev_y = mouse.y;
 }
+void cursor_erase() {
+    if (!cursor_saved_valid) return;
 
+    for (int dy = 0; dy < 19; dy++) {
+        for (int dx = 0; dx < 12; dx++) {
+            // Używamy starych współrzędnych (prev_x/y)
+            int32_t px = cursor_prev_x + dx;
+            int32_t py = cursor_prev_y + dy;
+
+            if (px < 0 || px >= (int32_t)g_width || py < 0 || py >= (int32_t)(g_max_y + 10)) {
+                continue;
+            }
+
+            // Sprawdzamy, czy w tym miejscu kursor w ogóle coś namalował (pixel_type != 0)
+            if (windows_cursor[dy][dx] != 0) {
+                // PRZYWRACAMY stare piksele z tablicy saved
+                g_fb[py * g_width + px] = cursor_saved[dy][dx];
+            }
+        }
+    }
+    cursor_saved_valid = false;
+}
 void cursor_hide_nolock() {
     cursor_erase();
 }
