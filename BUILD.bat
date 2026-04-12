@@ -24,8 +24,12 @@ for %%F in ("%SRC_DIR%\*.cpp") do (
     clang %CFLAGS% -c "%%F" -o "%OUT_DIR%\%%~nF.o" || exit /b 1
 )
 
-echo [2/4] Assembling NASM...
-nasm -f elf64 "%SRC_DIR%\io.asm" -o "%OUT_DIR%\io.o" || exit /b 1
+echo [2/4] Assembling NASM files...
+:: Pętla przechodzi przez każdy plik .asm w SRC_DIR
+for %%F in ("%SRC_DIR%\*.asm") do (
+    echo    Assembling %%~nxF...
+    nasm -f elf64 "%%F" -o "%OUT_DIR%\%%~nF.o" || exit /b 1
+)
 
 echo [3/4] Linking image...
 :: Tutaj u?ywamy maski *.o, aby automatycznie zlinkowa? wszystko, co si? skompilowa?o
