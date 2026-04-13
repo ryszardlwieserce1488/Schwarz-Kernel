@@ -19,7 +19,9 @@ static uint8_t mouse_packet[4];
 static uint8_t mouse_packet_idx = 0;
 static bool mouse_has_scroll = false;
 static uint8_t mouse_packet_size = 3;
-static uint32_t cursor_saved[5][5];
+static const int CURSOR_HEIGHT = 17;
+static const int CURSOR_WIDTH = 12;
+static uint32_t cursor_saved[CURSOR_HEIGHT][CURSOR_WIDTH];
 static bool cursor_saved_valid = false;
 static volatile bool cursor_dirty = true;
 
@@ -131,8 +133,7 @@ void draw_cursor(int32_t x, int32_t y, uint32_t color) {
     }
 }
 
-
-const char windows_cursor[19][12] = {
+const char windows_cursor[CURSOR_HEIGHT][CURSOR_WIDTH] = {
     {1,1,0,0,0,0,0,0,0,0,0,0},
     {1,2,1,0,0,0,0,0,0,0,0,0},
     {1,2,2,1,0,0,0,0,0,0,0,0},
@@ -152,10 +153,8 @@ const char windows_cursor[19][12] = {
     {0,0,0,0,0,0,1,1,0,0,0,0}
 };
 void cursor_draw() {
-    uint32_t click_color = mouse.left ? 0xFF0000 : 0xFFFFFF;
-
-    for (int dy = 0; dy < 19; dy++) {
-        for (int dx = 0; dx < 12; dx++) {
+    for (int dy = 0; dy < CURSOR_HEIGHT; dy++) {
+        for (int dx = 0; dx < CURSOR_WIDTH; dx++) {
             int32_t px = mouse.x + dx;
             int32_t py = mouse.y + dy;
 
@@ -177,7 +176,7 @@ void cursor_draw() {
                 g_fb[py * g_width + px] = 0x000000; // Czarna obwódka
             }
             else if (pixel_type == 2) {
-                g_fb[py * g_width + px] = click_color; // Białe/Czerwone wnętrze
+                g_fb[py * g_width + px] = 0xFFFFFF; // Białe wnętrze
             }
         }
     }
@@ -188,8 +187,8 @@ void cursor_draw() {
 void cursor_erase() {
     if (!cursor_saved_valid) return;
 
-    for (int dy = 0; dy < 19; dy++) {
-        for (int dx = 0; dx < 12; dx++) {
+    for (int dy = 0; dy < CURSOR_HEIGHT; dy++) {
+        for (int dx = 0; dx < CURSOR_WIDTH; dx++) {
             // Używamy starych współrzędnych (prev_x/y)
             int32_t px = cursor_prev_x + dx;
             int32_t py = cursor_prev_y + dy;
