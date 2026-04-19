@@ -6,6 +6,7 @@ extern "C" void outb(uint16_t port, uint8_t value);
 extern "C" uint8_t inb(uint16_t port);
 
 // Stan myszy
+extern "C" uint64_t lapic_base;
 struct MouseState {
     int32_t x;
     int32_t y;
@@ -282,7 +283,6 @@ extern "C" void mouse_handler_c() {
             cursor_dirty = true;
         }
     }
-
 done:
     outb(0xA0, 0x20); // EOI Slave
     outb(0x20, 0x20); // EOI Master

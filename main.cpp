@@ -305,8 +305,8 @@ void ui_task() {
 
             char buf[4];
             buf[0] = 'T';
-            buf[1] = '0' + (ticks_snapshot % 10);
-            buf[2] = '0' + ((ticks_snapshot / 10) % 10);
+            buf[1] = '0' + ((ticks_snapshot / 10) % 10);
+            buf[2] = '0' + (ticks_snapshot % 10);
             buf[3] = 0;
             draw_string(g_fb, g_width, buf, 10, 140, 0x00FF00);
             last_clock_ticks = ticks_snapshot;
@@ -466,14 +466,29 @@ extern "C" __attribute__((ms_abi)) void kernel_main(BootInfo* info) {
     MADTHeader* madt_hdr = (MADTHeader*)madt;
     lapic_addr = madt_hdr->lapic_addr;
 
+    uint32_t irq_to_gsi[16];
+    for (int i = 0; i < 16; i++) {
+        irq_to_gsi[i] = i; // Default 1:1 mapping
+    }
+
     uint8_t* entry = (uint8_t*)madt + sizeof(MADTHeader);
     uint8_t* end = (uint8_t*)madt + madt->length;
 
     while (entry < end) {
         MADTEntry* e = (MADTEntry*)entry;
+        if (e->length == 0) break; // Zabezpieczenie przed pętlą nieskończoną
         if (e->type == 1) {  // I/O APIC
-            ioapic_addr = *(uint32_t*)(entry + 4);
-            break;
+            if (ioapic_addr == 0) { // Bierzemy pierwszy I/O APIC
+                ioapic_addr = *(uint32_t*)(entry + 4);
+            }
+        }
+        else if (e->type == 2) { // Interrupt Source Override
+            uint8_t bus = *(uint8_t*)(entry + 2);
+            uint8_t source = *(uint8_t*)(entry + 3);
+            uint32_t gsi = *(uint32_t*)(entry + 4);
+            if (bus == 0 && source < 16) {
+                irq_to_gsi[source] = gsi;
+            }
         }
         entry += e->length;
     }
@@ -485,36 +500,53 @@ extern "C" __attribute__((ms_abi)) void kernel_main(BootInfo* info) {
     else {
         draw_string(fb, g_width, "IOAPIC FAIL", 200, 50, 0xFF0000);
     }
-    // Wyłącz legacy PIC całkowicie
-    outb(0x21, 0xFF);
-    outb(0xA1, 0xFF);
+    // Nie wyłączamy całkowicie PIC, bo KBD i Mysz będą z niego korzystać.
 
     // Pomocnicze funkcje do I/O APIC
     auto ioapic_read = [&](uint8_t reg) -> uint32_t {
         *(volatile uint32_t*)(ioapic_addr) = reg;
         return *(volatile uint32_t*)(ioapic_addr + 0x10);
-        };
+    };
     auto ioapic_write = [&](uint8_t reg, uint32_t val) {
         *(volatile uint32_t*)(ioapic_addr) = reg;
         *(volatile uint32_t*)(ioapic_addr + 0x10) = val;
-        };
+    };
+    auto ioapic_set_gsi = [&](uint32_t gsi, uint8_t vector) {
+        if (!ioapic_addr) return;
+        uint32_t reg = 0x10 + (gsi * 2);
+        // vector, fixed delivery, active high, edge triggered, unmasked
+        ioapic_write(reg, vector);
+        
+        // Pobierz lokalne APIC ID (bity 24-31 rejestru 0x20)
+        uint32_t my_apic_id = *(volatile uint32_t*)(lapic_addr + 0x20) >> 24;
+        
+        // destination APIC ID
+        ioapic_write(reg + 1, my_apic_id << 24);
+    };
 
     // Włącz Local APIC (ustaw bit 8 w Spurious Interrupt Vector Register)
     *(volatile uint32_t*)(lapic_addr + 0xF0) |= (1 << 8);
     // Ustaw spurious vector na 0xFF
     *(volatile uint32_t*)(lapic_addr + 0xF0) = 0x1FF;
+    // Wyzeruj TPR (Task Priority Register), aby akceptować wszystkie przerwania
+    *(volatile uint32_t*)(lapic_addr + 0x80) = 0;
 
-    // Przekieruj IRQ0 (PIT) -> wektor 0x20
-    // Rejestr IOREDTBL0 = rejestry 0x10 (low) i 0x11 (high)
-    ioapic_write(0x10, 0x20);  // wektor 0x20, fixed delivery, aktywny wysoki, edge triggered
-    ioapic_write(0x11, 0x00);  // CPU 0
+    // KONFIGURACJA LAPIC TIMER (Niezawodny heartbeat wbudowany w CPU)
+    *(volatile uint32_t*)(lapic_addr + 0x3E0) = 0x03; // Divide by 16
+    *(volatile uint32_t*)(lapic_addr + 0x320) = 0x20 | 0x20000; // Wektor 0x20, tryb Periodic
+    *(volatile uint32_t*)(lapic_addr + 0x380) = 25000; // Znacznie szybszy tick-rate (ok. 60-100Hz)
 
     draw_string(fb, g_width, "APIC cfg ok", 200, 60, 0x00FF00);
-    pit_init(100);
+    // Zastąpiliśmy PIT przez LAPIC Timer, więc go nie inicjalizujemy.
+    // pit_init(100);
 
-    draw_string(fb, g_width, "10 unmask irq", 10, 100, 0xFFFFFFFF);
-    outb(0x21, 0xF8); // Odmaskuj: PIT(0), KBD(1), Slave Cascade(2)
-    outb(0xA1, 0xEF); // Odmaskuj: Mouse(12)
+    draw_string(fb, g_width, "10 pic unmask", 10, 100, 0xFFFFFFFF);
+    // Przywracamy Legacy PIC wyłącznie dla Klawiatury (IRQ1) i Myszki (IRQ12).
+    // Maskujemy PIT (IRQ0), ponieważ używamy LAPIC Timera.
+    // 0xF9 = 1111 1001 (Odmaskowane bity 1 i 2)
+    outb(0x21, 0xF9); 
+    // 0xEF = 1110 1111 (Odmaskowany bit 4, czyli IRQ12 na slave)
+    outb(0xA1, 0xEF);
 
     // 5. Ustawienia powłoki na bazie metryk TTF
     constexpr uint32_t kBootLogLastY = 130;

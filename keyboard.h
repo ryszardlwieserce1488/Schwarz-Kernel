@@ -145,6 +145,7 @@ static inline void keyboard_handle_byte(uint8_t sc) {
     if (c) kb_push(c);
 }
 
+extern "C" uint64_t lapic_base;
 extern "C" void keyboard_handler_c() {
     uint8_t status = inb(0x64);
     if ((status & 0x01) && !(status & 0x20)) {
