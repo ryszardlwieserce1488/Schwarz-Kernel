@@ -154,10 +154,14 @@ const char windows_cursor[CURSOR_HEIGHT][CURSOR_WIDTH] = {
     {0,0,0,0,0,0,1,1,0,0,0,0}
 };
 void cursor_draw() {
+    // Odczytujemy pozycję myszy raz, aby zapobiec wyścigom z przerwaniami
+    int32_t current_x = mouse.x;
+    int32_t current_y = mouse.y;
+
     for (int dy = 0; dy < CURSOR_HEIGHT; dy++) {
         for (int dx = 0; dx < CURSOR_WIDTH; dx++) {
-            int32_t px = mouse.x + dx;
-            int32_t py = mouse.y + dy;
+            int32_t px = current_x + dx;
+            int32_t py = current_y + dy;
 
             // Używamy Twojego sprawdzenia krawędzi:
             if (px < 0 || px >= (int32_t)g_width || py < 0 || py >= (int32_t)(g_max_y + 10)) {
@@ -182,8 +186,8 @@ void cursor_draw() {
         }
     }
     cursor_saved_valid = true;
-    cursor_prev_x = mouse.x;
-    cursor_prev_y = mouse.y;
+    cursor_prev_x = current_x;
+    cursor_prev_y = current_y;
 }
 void cursor_erase() {
     if (!cursor_saved_valid) return;
