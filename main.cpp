@@ -389,7 +389,7 @@ extern "C" __attribute__((ms_abi)) void kernel_main(BootInfo* info) {
     idt_set_entry(0x20, (uint64_t)timer_handler);    // PIT
     idt_set_entry(0x21, (uint64_t)keyboard_handler); // Klawiatura (IRQ1)
     idt_set_entry(0x2C, (uint64_t)mouse_handler);    // Mysz (IRQ12)
-
+    // z tym PITem jest taki problem że na QEMU działa, a na prawdziwym sprzęcie nie działa, ale jak się go utnie to się zaczyna problem z innymi sprzętami, także wmieszaliśmy się w olbrzymi problem z PIT i ACPI, i ucięcie jednego ucina większość funkcjonalności i niezbyt to już ogarniam
     draw_string(fb, g_width, "9 pit 100hz", 10, 90, 0xFFFFFFFF);
 
     struct RSDP {

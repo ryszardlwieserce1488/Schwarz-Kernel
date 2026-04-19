@@ -1,4 +1,4 @@
-﻿//usb.cpp
+//usb.cpp
 #include "usb.h"
 #include "memory.h"
 #include "storage.h"
@@ -346,6 +346,21 @@ static uint16_t xhci_default_ep0_packet_size(uint8_t speed_id) {
     }
 }
 
+template <typename T>
+static void xhci_advance_enqueue(XhciTrb* ring, T* index, uint8_t* cycle) {
+    (*index)++;
+    if (*index >= kMaxTrbs - 1) {
+        XhciTrb* link_trb = &ring[kMaxTrbs - 1];
+        link_trb->parameter_lo = (uint32_t)(uintptr_t)ring;
+        link_trb->parameter_hi = (uint32_t)((uint64_t)(uintptr_t)ring >> 32);
+        link_trb->status = 0;
+        asm volatile("" ::: "memory");
+        link_trb->control = (6u << kTrbTypeShift) | (*cycle ? kTrbCycle : 0) | kTrbToggleCycle;
+        *index = 0;
+        *cycle ^= 1;
+    }
+}
+
 static uint8_t* xhci_context_ptr(uint8_t* base, uint32_t index, uint8_t context_size) {
     return base + ((uint64_t)index * context_size);
 }
@@ -364,20 +379,18 @@ static void xhci_ring_enqueue_transfer(XhciRuntimeState* rt, uint8_t slot_id, co
 
     uint32_t ring_index = slot_id - 1;
     uint32_t index = rt->transfer_enqueue[ring_index];
-    if (index >= kMaxTrbs - 1) index = 0;
 
-    ring[index] = src;
-    ring[index].control &= ~kTrbCycle;
-    if (rt->transfer_cycles[ring_index]) ring[index].control |= kTrbCycle;
+    ring[index].parameter_lo = src.parameter_lo;
+    ring[index].parameter_hi = src.parameter_hi;
+    ring[index].status = src.status;
+    asm volatile("" ::: "memory");
+    uint32_t control = src.control & ~kTrbCycle;
+    if (rt->transfer_cycles[ring_index]) control |= kTrbCycle;
+    ring[index].control = control;
 
     if (out_trb) *out_trb = &ring[index];
 
-    index++;
-    if (index >= kMaxTrbs - 1) {
-        index = 0;
-        rt->transfer_cycles[ring_index] ^= 1;
-    }
-    rt->transfer_enqueue[ring_index] = (uint16_t)index;
+    xhci_advance_enqueue(ring, &rt->transfer_enqueue[ring_index], &rt->transfer_cycles[ring_index]);
 }
 
 static void xhci_ring_reset_transfer(XhciRuntimeState* rt, uint8_t slot_id) {
@@ -443,16 +456,12 @@ static void xhci_queue_address_device(XhciRuntimeState* rt, uint8_t slot_id) {
     trb->parameter_lo = (uint32_t)(uintptr_t)input_ctx;
     trb->parameter_hi = (uint32_t)((uint64_t)(uintptr_t)input_ctx >> 32);
     trb->status = 0;
+    asm volatile("" ::: "memory");
     trb->control = (kTrbTypeAddressDeviceCmd << kTrbTypeShift)
         | ((uint32_t)slot_id << 24)
         | (rt->command_cycle ? kTrbCycle : 0);
 
-    index++;
-    if (index >= kMaxTrbs - 1) {
-        index = 0;
-        rt->command_cycle ^= 1;
-    }
-    rt->command_enqueue = index;
+    xhci_advance_enqueue(rt->command_ring, &rt->command_enqueue, &rt->command_cycle);
 }
 
 static bool xhci_wait_transfer_completion(volatile XhciCapabilityRegs* cap, XhciRuntimeState* rt, XhciTrb* target_trb) {
@@ -728,14 +737,10 @@ static void xhci_queue_enable_slot(XhciRuntimeState* rt) {
     trb->parameter_lo = 0;
     trb->parameter_hi = 0;
     trb->status = 0;
+    asm volatile("" ::: "memory");
     trb->control = (kTrbTypeEnableSlotCmd << kTrbTypeShift) | (rt->command_cycle ? kTrbCycle : 0);
 
-    index++;
-    if (index >= kMaxTrbs - 1) {
-        index = 0;
-        rt->command_cycle ^= 1;
-    }
-    rt->command_enqueue = index;
+    xhci_advance_enqueue(rt->command_ring, &rt->command_enqueue, &rt->command_cycle);
 }
 
 static bool xhci_poll_event(volatile XhciCapabilityRegs* cap, XhciRuntimeState* rt, XhciTrb* out_trb) {
@@ -887,12 +892,11 @@ static bool xhci_configure_bulk_endpoints(volatile XhciCapabilityRegs* cap,
     trb->parameter_lo = (uint32_t)(uintptr_t)input_ctx;
     trb->parameter_hi = (uint32_t)((uint64_t)(uintptr_t)input_ctx >> 32);
     trb->status = 0;
+    asm volatile("" ::: "memory");
     trb->control = (kTrbTypeConfigureEndpointCmd << kTrbTypeShift)
         | ((uint32_t)slot_id << 24)
         | (rt->command_cycle ? kTrbCycle : 0);
-    index++;
-    if (index >= kMaxTrbs - 1) { index = 0; rt->command_cycle ^= 1; }
-    rt->command_enqueue = index;
+    xhci_advance_enqueue(rt->command_ring, &rt->command_enqueue, &rt->command_cycle);
 
     xhci_ring_doorbell(cap, 0, 0);
     XhciTrb completion{};
@@ -938,6 +942,7 @@ static bool xhci_bulk_out(volatile XhciCapabilityRegs* cap,
     trb->parameter_lo = (uint32_t)(uintptr_t)buf;
     trb->parameter_hi = (uint32_t)((uint64_t)(uintptr_t)buf >> 32);
     trb->status = len;
+    asm volatile("" ::: "memory");
     trb->control = (1u << kTrbTypeShift) | kTrbIoc
         | (rt->bulk_cycles[si][0] ? kTrbCycle : 0);
 
@@ -948,9 +953,7 @@ static bool xhci_bulk_out(volatile XhciCapabilityRegs* cap,
     dev->dbg_target_lo = (uint32_t)(uintptr_t)trb;
     dev->dbg_target_hi = (uint32_t)((uint64_t)(uintptr_t)trb >> 32);
 
-    idx++;
-    if (idx >= kMaxTrbs - 1) { idx = 0; rt->bulk_cycles[si][0] ^= 1; }
-    rt->bulk_enqueue[si][0] = (uint16_t)idx;
+    xhci_advance_enqueue(ring, &rt->bulk_enqueue[si][0], &rt->bulk_cycles[si][0]);
 
     xhci_ring_doorbell(cap, slot_id, dev->bulk_out_endpoint * 2);
 
@@ -984,13 +987,12 @@ static void xhci_reset_endpoint(volatile XhciCapabilityRegs* cap,
     trb->parameter_lo = 0;
     trb->parameter_hi = 0;
     trb->status = 0;
+    asm volatile("" ::: "memory");
     trb->control = (kTrbTypeResetEndpointCmd << kTrbTypeShift)
         | ((uint32_t)slot_id << 24)
         | (ep_ctx_idx << 16)
         | (rt->command_cycle ? kTrbCycle : 0);
-    index++;
-    if (index >= kMaxTrbs - 1) { index = 0; rt->command_cycle ^= 1; }
-    rt->command_enqueue = index;
+    xhci_advance_enqueue(rt->command_ring, &rt->command_enqueue, &rt->command_cycle);
     xhci_ring_doorbell(cap, 0, 0);
     XhciTrb completion{};
     xhci_wait_command_completion(cap, rt, nullptr, &completion);
@@ -1013,6 +1015,7 @@ static bool xhci_bulk_in(volatile XhciCapabilityRegs* cap,
     trb->parameter_hi = (uint32_t)((uint64_t)(uintptr_t)buf >> 32);
     trb->status = len;
 
+    asm volatile("" ::: "memory");
     trb->control = (1u << kTrbTypeShift) | kTrbIoc
         | (rt->bulk_cycles[si][1] ? kTrbCycle : 0);
 
@@ -1020,12 +1023,12 @@ static bool xhci_bulk_in(volatile XhciCapabilityRegs* cap,
     uintptr_t target = (uintptr_t)trb;
     dev->dbg_in_ring_lo = (uint32_t)(uintptr_t)ring;
     dev->dbg_in_ring_hi = (uint32_t)((uint64_t)(uintptr_t)ring >> 32);
-    idx++;
-    if (idx >= kMaxTrbs - 1) { idx = 0; rt->bulk_cycles[si][1] ^= 1; }
-    rt->bulk_enqueue[si][1] = (uint16_t)idx;
+
+    xhci_advance_enqueue(ring, &rt->bulk_enqueue[si][1], &rt->bulk_cycles[si][1]);
+
     dev->dbg_in_target_lo = (uint32_t)target;
     dev->dbg_in_target_hi = (uint32_t)((uint64_t)target >> 32);
-    dev->dbg_in_idx = idx - 1; // idx już zinkrementowany, cofnij o 1
+    dev->dbg_in_idx = rt->bulk_enqueue[si][1] - 1; // idx już zinkrementowany, cofnij o 1
     //xhci_reset_endpoint(cap, rt, slot_id, dev->bulk_in_endpoint * 2 + 1);
     dev->dbg_in_trb_ctrl = trb->control;
     dev->dbg_in_trb_stat = trb->status;
