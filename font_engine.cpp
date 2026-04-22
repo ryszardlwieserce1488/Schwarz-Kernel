@@ -1,4 +1,4 @@
-﻿// font_engine.cpp
+// font_engine.cpp
 //
 // Uwagi architektoniczne:
 //   - Wyłącznie x86-64; używamy SSE2 (sqrtss) i __builtin_expect.
@@ -44,52 +44,26 @@ static inline float fast_sqrt(float x) {
 
 #include "stb_truetype.h"
 
-// ---------------------------------------------------------------------------
-// Indeksy fontów
-// ---------------------------------------------------------------------------
-enum FontIndex {
-    FONT_TNR = 0,
-    FONT_INCONSOLATA = 1,
-    FONT_CONSOLAS = 2,
-    FONT_SEGOE = 3,
-    FONT_COUNT = 4,
-};
+#include "fonts.h"
 
-// ---------------------------------------------------------------------------
-// Symbole wgrane przez objcopy
-//
-// WAŻNE: jeśli Segoe nie działa, sprawdź dokładną nazwę symbolu:
-//   nm font_engine.o | grep -i segoe
-// Błędna nazwa = cichy nullptr = InitFont zwraca 0 bez crash'a.
-// ---------------------------------------------------------------------------
-extern "C" unsigned char _binary_times_ttf_start[];
-extern "C" unsigned char _binary_inconsolata_ttf_start[];
-extern "C" unsigned char _binary_consolas_ttf_start[];
-extern "C" unsigned char _binary_segoeuithis_ttf_start[];
+// Symbole są teraz definiowane w generowanym fonts.h / fonts.cpp
 
-// ---------------------------------------------------------------------------
-// Sloty fontów
-// ---------------------------------------------------------------------------
 struct FontSlot {
-    unsigned char* data;
     stbtt_fontinfo info;
     bool           ready;
 };
 
-static FontSlot g_fonts[FONT_COUNT] = {
-    { _binary_times_ttf_start,       {}, false },  // FONT_TNR
-    { _binary_inconsolata_ttf_start, {}, false },  // FONT_INCONSOLATA
-    { _binary_consolas_ttf_start,    {}, false },  // FONT_CONSOLAS
-    { _binary_segoeuithis_ttf_start, {}, false },  // FONT_SEGOE
-};
-
-static int g_active_font = FONT_TNR;
+static FontSlot g_font_slots[32]; // Max 32 fonts
+static int g_active_font = 0;
 
 // Inicjalizuje slot leniwie; zwraca wskaźnik lub nullptr przy błędzie.
 static FontSlot* get_ready_font() {
-    FontSlot* slot = &g_fonts[g_active_font];
+    if (g_active_font < 0 || g_active_font >= G_EMBEDDED_FONTS_COUNT) return nullptr;
+    if (g_active_font >= 32) return nullptr;
+
+    FontSlot* slot = &g_font_slots[g_active_font];
     if (!slot->ready)
-        slot->ready = (stbtt_InitFont(&slot->info, slot->data, 0) != 0);
+        slot->ready = (stbtt_InitFont(&slot->info, G_EMBEDDED_FONTS[g_active_font].data, 0) != 0);
     return slot->ready ? slot : nullptr;
 }
 
@@ -282,7 +256,7 @@ static int uncached_advance(int codepoint, int size, FontSlot* slot) {
 // ---------------------------------------------------------------------------
 
 extern "C" void set_active_font(int index) {
-    if (index >= 0 && index < FONT_COUNT && index != g_active_font) {
+    if (index >= 0 && index < G_EMBEDDED_FONTS_COUNT && index != g_active_font) {
         g_active_font = index;
         cache_invalidate();
     }

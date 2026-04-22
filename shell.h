@@ -8,6 +8,7 @@
 #include "storage.h"
 #include "usb.h"
 #include "vfs.h"
+#include "fonts.h"
 extern "C" void fb_acquire();
 extern "C" void fb_release();
 extern uint32_t* g_fb;
@@ -627,15 +628,32 @@ extern "C" void set_active_font(int index);
 extern "C" int  get_active_font();
 void cmd_font(const char* line) {
     const char* arg = line + 5;
+    while (*arg == ' ') arg++;
 
-    int idx = -1;
-    if (str_eq(arg, "tnr")) idx = 0;
-    else if (str_eq(arg, "inc")) idx = 1;
-    else if (str_eq(arg, "con")) idx = 2;
-    else if (str_eq(arg, "seg")) idx = 3;
+    if (*arg == '\0') {
+        shell_println("Dostepne czcionki:");
+        for (int i = 0; i < G_EMBEDDED_FONTS_COUNT; i++) {
+            char buf[16];
+            itoa_dec((uint64_t)i, buf);
+            shell_print("  [");
+            shell_print(buf);
+            shell_print("] ");
+            shell_println(G_EMBEDDED_FONTS[i].name);
+        }
+        shell_println("Uzycie: font <numer>");
+        return;
+    }
 
-    if (idx < 0) {
-        shell_println("Nieznany font. Dostepne: tnr, inc, con, seg");
+    int idx = 0;
+    bool has_digit = false;
+    while (*arg >= '0' && *arg <= '9') {
+        idx = idx * 10 + (*arg - '0');
+        arg++;
+        has_digit = true;
+    }
+
+    if (!has_digit || idx < 0 || idx >= G_EMBEDDED_FONTS_COUNT) {
+        shell_println("Nieznany numer czcionki. Wpisz 'font' bez argumentu aby zobaczyc liste.");
         return;
     }
 
@@ -643,15 +661,12 @@ void cmd_font(const char* line) {
     shell_ttf_enabled = true;
     if (!is_active_font_available()) {
         shell_ttf_enabled = false;
-        shell_println("TTF font engine nie jest dostepny.");
+        shell_println("Blad: Czcionka nie mogla zostac zaladowana.");
         return;
     }
 
-    const char* names[] = {
-        "Times New Roman", "Inconsolata", "Consolas", "Segoe UI"
-    };
-    shell_print("Czcionka: ");
-    shell_println(names[idx]);
+    shell_print("Ustawiono czcionke: ");
+    shell_println(G_EMBEDDED_FONTS[idx].name);
 }
 void cmd_compile(const char* line) {
     const char* src = line;
