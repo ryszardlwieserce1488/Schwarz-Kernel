@@ -1,6 +1,4 @@
 To rezpozytorium na Githubie zostało opublikowane na mocy postanowień licencji SCHWARZ. Jego autorem i właścicielem jest RICHARD_GABRIEL_W._FAHRENHEIT,_WOLFRAM_RUDOLF_SCHWARZHAIN. 
-Klucz publiczny autora:
-30 82 02 0a 02 82 02 01 00 bb 3b b5 39 f0 ff 32 d1 e3 11 6f 22 64 ed 94 d6 31 38 62 df dc 10 50 ac 03 ad 55 93 b3 f5 5f 09 55 12 4a 63 2d 19 ee 2d 53 c3 60 40 d3 38 e9 e7 50 83 29 3b 04 30 43 c0 ea 46 5c 9a 10 fb 8b 01 f0 14 d7 90 13 55 22 c7 ea 2f 6c 43 7a 96 d9 47 e4 dd c8 92 a4 3e 57 18 e1 5f 5d 4a 9d 58 ca bf c4 75 30 ae 47 e3 a5 a3 b7 bd 36 8b f3 ba 84 0f 97 18 15 19 49 bf 29 81 af 1d 5a 5b 4b bb 01 69 d4 cf 49 a2 a5 1c ab a9 f8 74 e2 14 d0 17 80 eb d6 7a 56 dd 2a 21 41 5c 9b da 47 d8 24 04 f5 cc c3 fc f4 a6 75 e2 05 26 d3 7e 2b 71 ca a0 ee dd 06 66 1a 84 27 50 88 75 25 ba b9 2a 87 97 9d 75 fa 6d b2 ba 66 35 56 66 3e 36 83 89 58 9c 56 c2 54 10 c8 c2 88 76 6e 52 ae 54 b3 9a 36 31 76 68 46 ee f8 ae 5a f0 4d 8c 59 af aa f7 6c 3e 55 b8 99 02 5b 20 f8 27 03 dd 0b f1 3b 0d 6b 56 73 23 c7 f9 c9 0e 76 f1 d6 a8 40 8d 7e 3f 57 56 f2 e9 87 41 b9 ff bf d5 a4 06 c3 9e f8 b8 42 a4 1e e4 b3 d4 45 f3 c5 06 aa df 82 b3 ba 15 40 1a 8d 76 f7 6f 13 58 f3 eb 2e fb e9 75 1f d2 a3 81 f6 e9 a5 9e 6d 57 8d cd d9 31 f9 6f 50 72 3a cf 81 a7 38 7b bf 80 4c b9 fe bb f6 3b 2b 7a 93 70 7f 63 e0 7b cb 4a a6 75 21 b5 13 6a 56 85 89 61 a2 ec e5 9f b5 11 cb 48 fe b5 a3 7a 54 8d dd f0 78 d7 24 94 7c 75 80 08 aa 2e 9e 15 2d c5 56 f1 36 a5 e6 37 9d ea 41 ec fc b8 45 a6 61 81 b3 25 f0 38 3f c8 5f 64 96 aa aa 72 70 79 be 24 f9 58 a1 e4 b5 a2 7b 59 cb d8 7f 10 0e 4d 2f 9c 73 04 27 08 ad 81 1c c9 04 dd 4c a8 91 74 3b 1d 79 a4 de 37 8d 7c 2b 32 15 61 8a 4f 6c 73 ca 59 0a ae 53 25 cc 1d a3 6b 64 40 71 40 ff a2 17 13 85 63 f6 c7 30 33 0e f3 0e de 58 8a ce 21 c5 4d e7 26 30 b9 02 03 01 00 01
 
 POSTANOWIENIA LICENCJI SCHWARZ
 
@@ -9,7 +7,58 @@ POSTANOWIENIA LICENCJI SCHWARZ
 3. Właściciel posiada wyłączne prawo do zmiany licencji na inną. W czasie obowiązywania tejże licencji nie można udostępniać projektu na innych licencjach w przypadku udostępniania go publicznie. Właściciel zachowuje na ten czas prawo do udostępniania go na innej licencji podmiotom prywatnym i firmom.
 4. Dozwolone jest kopiowanie i modyfikowanie skopiowanego kodu w celach dowolnych, pod warunkiem zachowania pliku zawierającego postanowienia tejże licencji obok plików, w których znajduje się zmodyfikowany lub skopiowany z tego projektu kod.
 5. Obowiązkowe jest także dołączenie tej licencji przy rozpowszechnianiu binariów, jakie powstały podczas kompilacji z użyciem zmodyfikowanego lub skopiowanego z tego projektu kodu. Takowa kompilacja jest dozwolona w celach dowolnych.
-6. Jako "licencję" (w szczególności w punktach 4. i 5.) rozumie się całość pliku "LICENCJA", wszystkie jego elementy, w niezmienionej formie.
+6. Jako "licencję" (w szczególności w punktach 4. i 5.) rozumie się całość pliku "LICENSE", wszystkie jego elementy, w niezmienionej formie.
 7. Zakazane jest kopiowanie i modyfikowanie tego kodu w celu publikacji wyników takowej kopii lub modyfikacji na urządzeniu, które dostarczone jest do użytkownika końcowego w formie, w której nie da się na takim urządzeniu uruchomić innego systemu operacyjnego. Jako "inny system operacyjny" rozumie się każdy program, który działa używając instrukcji assemblerowych architektury na której bazuje procesor centralny wmontowany w to urządzenie. Jako "nie da się uruchomić", rozumie się rozumie się sytuację, w której urządzenie posiada techniczne lub programowe blokady, które uniemożliwiają załadowanie i wykonanie kodu przez procesor bez wyraźnej autoryzacji ze strony producenta lub podmiotu trzeciego, a klucze lub narzędzia niezbędne do zdjęcia tych blokad nie są publicznie dostępne lub nie zostały przekazane użytkownikowi końcowemu wraz z urządzeniem w formie jawnej, niezaszyfrowanej i czytelnej. 
 8. Kto, kopiując i modyfikując kod, proponuje następnie autorowi zmianę w projekcie, potwierdza że ma do treści proponowanej zmiany (między innymi do nowych lub zmodyfikoweanych fragmentów kodu źródłowego, ale także do grafik rastrowych i wektorowych, tekstów, dźwięków) odpowiednie prawa autorskie lub udzielono mu je na licencji, która pozwala na takowe udostępnianie. Takowy udostępniający potwierdza również, iż zrzeka się swoich praw do zamieszczanego przez siebie kodu, na rzecz właściciela projektu. 
 9. Pobierając pliki źródłowe lub binaria z tego projektu, pobierający zgadza się na wszystko, co nastąpi na jego komputerze, danych, sprzęcie lub programach, co wynika z działania tego kodu. Potwierdza on iż rozumie, do czego służy kod, i że autor nie posiada żadnych obowiązków wobec kodu, który on pobrał. 
+10. Autor i właściciel wyraża zgodę oraz ogłasza zmianę wytycznych i innych zasad, zawiera licencję, poprzez oświadczenie złożone w formie trzech podpisanych plików tekstowych o identycznej treści lecz z innymi podpisami, gdzie każdy z podpisów musi znajdować swoją reprezentację autentyczności w kluczach publicznych dołączonych do pliku licencyjnego.
+
+Klucz publiczny autora nr 1 (RSA4096):
+30 82 02 0a 02 82 02 01 00 bb 3b b5 39 f0 ff 32 d1 e3 11 6f 22 64 ed 94 d6 31 38 62 df dc 10 50 ac 03 ad 55 93 b3 f5 5f 09 55 12 4a 63 2d 19 ee 2d 53 c3 60 40 d3 38 e9 e7 50 83 29 3b 04 30 43 c0 ea 46 5c 9a 10 fb 8b 01 f0 14 d7 90 13 55 22 c7 ea 2f 6c 43 7a 96 d9 47 e4 dd c8 92 a4 3e 57 18 e1 5f 5d 4a 9d 58 ca bf c4 75 30 ae 47 e3 a5 a3 b7 bd 36 8b f3 ba 84 0f 97 18 15 19 49 bf 29 81 af 1d 5a 5b 4b bb 01 69 d4 cf 49 a2 a5 1c ab a9 f8 74 e2 14 d0 17 80 eb d6 7a 56 dd 2a 21 41 5c 9b da 47 d8 24 04 f5 cc c3 fc f4 a6 75 e2 05 26 d3 7e 2b 71 ca a0 ee dd 06 66 1a 84 27 50 88 75 25 ba b9 2a 87 97 9d 75 fa 6d b2 ba 66 35 56 66 3e 36 83 89 58 9c 56 c2 54 10 c8 c2 88 76 6e 52 ae 54 b3 9a 36 31 76 68 46 ee f8 ae 5a f0 4d 8c 59 af aa f7 6c 3e 55 b8 99 02 5b 20 f8 27 03 dd 0b f1 3b 0d 6b 56 73 23 c7 f9 c9 0e 76 f1 d6 a8 40 8d 7e 3f 57 56 f2 e9 87 41 b9 ff bf d5 a4 06 c3 9e f8 b8 42 a4 1e e4 b3 d4 45 f3 c5 06 aa df 82 b3 ba 15 40 1a 8d 76 f7 6f 13 58 f3 eb 2e fb e9 75 1f d2 a3 81 f6 e9 a5 9e 6d 57 8d cd d9 31 f9 6f 50 72 3a cf 81 a7 38 7b bf 80 4c b9 fe bb f6 3b 2b 7a 93 70 7f 63 e0 7b cb 4a a6 75 21 b5 13 6a 56 85 89 61 a2 ec e5 9f b5 11 cb 48 fe b5 a3 7a 54 8d dd f0 78 d7 24 94 7c 75 80 08 aa 2e 9e 15 2d c5 56 f1 36 a5 e6 37 9d ea 41 ec fc b8 45 a6 61 81 b3 25 f0 38 3f c8 5f 64 96 aa aa 72 70 79 be 24 f9 58 a1 e4 b5 a2 7b 59 cb d8 7f 10 0e 4d 2f 9c 73 04 27 08 ad 81 1c c9 04 dd 4c a8 91 74 3b 1d 79 a4 de 37 8d 7c 2b 32 15 61 8a 4f 6c 73 ca 59 0a ae 53 25 cc 1d a3 6b 64 40 71 40 ff a2 17 13 85 63 f6 c7 30 33 0e f3 0e de 58 8a ce 21 c5 4d e7 26 30 b9 02 03 01 00 01
+Klucz publiczny autora nr 2 (Ed25519):
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC/sDnRU5zJpQqAT8jgcuKJJrVMbOYaznJ/u+OYh5zzo ghjeuam@gmail.com
+Klucz publiczny autora nr 3 (ML-DSA-65):
+-----BEGIN PUBLIC KEY-----
+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
+B88ymPth
+-----END PUBLIC KEY-----
