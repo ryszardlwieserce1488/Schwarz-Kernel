@@ -4,10 +4,6 @@
 extern "C" {
 #endif
 
-#ifdef __cplusplus
-}
-#endif
-
 const EmbeddedFont G_EMBEDDED_FONTS[] = {
     { "consolas", _binary_consolas_ttf_start, _binary_consolas_ttf_size },
     { "inconsolata", _binary_inconsolata_ttf_start, _binary_inconsolata_ttf_size },
@@ -16,3 +12,7 @@ const EmbeddedFont G_EMBEDDED_FONTS[] = {
 };
 
 const int G_EMBEDDED_FONTS_COUNT = 4;
+
+#ifdef __cplusplus
+}
+#endif

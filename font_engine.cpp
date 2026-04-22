@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "fonts.h"
 extern "C" void* malloc(size_t size);
 extern "C" void  free(void* ptr);
 
@@ -44,7 +45,6 @@ static inline float fast_sqrt(float x) {
 
 #include "stb_truetype.h"
 
-#include "fonts.h"
 
 // Symbole są teraz definiowane w generowanym fonts.h / fonts.cpp
 

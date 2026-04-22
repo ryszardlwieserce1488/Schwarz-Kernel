@@ -1,5 +1,5 @@
 #pragma once
-#include <stdint.h>
+#include "types.h"
 
 struct EmbeddedFont {
     const char* name;
@@ -20,9 +20,9 @@ extern uint64_t _binary_segoeuithis_ttf_size;
 extern unsigned char _binary_times_ttf_start[];
 extern uint64_t _binary_times_ttf_size;
 
+extern const EmbeddedFont G_EMBEDDED_FONTS[];
+extern const int G_EMBEDDED_FONTS_COUNT;
+
 #ifdef __cplusplus
 }
 #endif
-
-extern const EmbeddedFont G_EMBEDDED_FONTS[];
-extern const int G_EMBEDDED_FONTS_COUNT;

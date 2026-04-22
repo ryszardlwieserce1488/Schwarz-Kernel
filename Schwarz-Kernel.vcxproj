@@ -170,16 +170,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="compiler.cpp" />
-    <ClCompile Include="fat32.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="memory.cpp" />
-    <ClCompile Include="storage.cpp" />
-    <ClCompile Include="usb.cpp" />
-    <ClCompile Include="vfs.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="io.asm">
+    <CustomBuild Include="*.asm">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">nasm.exe -f win64 %(FullPath) -o $(IntDir)%(Filename).obj</Command>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">nasm.exe -f win64 %(FullPath) -o $(IntDir)%(Filename).obj</Command>
@@ -188,29 +179,9 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="assert.h" />
-    <ClInclude Include="compiler.h" />
-    <ClInclude Include="font_engine.cpp" />
-    <ClInclude Include="gdt.h" />
-    <ClInclude Include="idt.h" />
-    <ClInclude Include="keyboard.h" />
-    <ClInclude Include="math.h" />
-    <ClInclude Include="memory.h" />
-    <ClInclude Include="mouse.h" />
-    <ClInclude Include="pic.h" />
-    <ClInclude Include="pit.h" />
-    <ClInclude Include="ps2.h" />
-    <ClInclude Include="reboot.h" />
-    <ClInclude Include="shell.h" />
-    <ClInclude Include="stb_truetype.h" />
-    <ClInclude Include="stdlib.h" />
-    <ClInclude Include="storage.h" />
-    <ClInclude Include="string.h" />
-    <ClInclude Include="task.h" />
-    <ClInclude Include="types.h" />
-    <ClInclude Include="usb.h" />
-    <ClInclude Include="vfs.h" />
-  </ItemGroup>
+  <ClCompile Include="*.cpp" />
+  <ClInclude Include="*.h" />
+</ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
