@@ -7,6 +7,7 @@ if "%CFG%"=="" set "CFG=Release"
 set "OUT_DIR=%SRC_DIR%\x64\%CFG%"
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
 set "CFLAGS=-target x86_64-unknown-elf -ffreestanding -fno-stack-protector -fno-exceptions -fno-rtti -fno-pic -fno-pie -mno-red-zone -ffunction-sections -fdata-sections -nostdlib -I"%SRC_DIR%""
+pushd "%SRC_DIR%" || exit /b 1
 
 echo [0/5] Generuję pliki czcionek...
 powershell -ExecutionPolicy Bypass -File "%SRC_DIR%\generate_fonts.ps1" || exit /b 1
@@ -38,4 +39,5 @@ llvm-objcopy -O binary "%OUT_DIR%\kernel.elf" "%OUT_DIR%\kernel.bin" || exit /b 
 
 echo.
 echo Kompilacja pomyślna: "%OUT_DIR%\kernel.bin"
+popd
 exit /b 0
