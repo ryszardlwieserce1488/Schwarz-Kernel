@@ -627,7 +627,7 @@ void cmd_clear() {
 extern "C" void set_active_font(int index);
 extern "C" int  get_active_font();
 void cmd_font(const char* line) {
-    const char* arg = line + 5;
+    const char* arg = line + 4;
     while (*arg == ' ') arg++;
 
     if (*arg == '\0') {
