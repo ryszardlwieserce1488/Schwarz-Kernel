@@ -5,13 +5,12 @@ extern "C" {
 #endif
 
 const EmbeddedFont G_EMBEDDED_FONTS[] = {
-    { "consolas", _binary_consolas_ttf_start, _binary_consolas_ttf_end },
     { "inconsolata", _binary_inconsolata_ttf_start, _binary_inconsolata_ttf_end },
-    { "segoeuithis", _binary_segoeuithis_ttf_start, _binary_segoeuithis_ttf_end },
-    { "times", _binary_times_ttf_start, _binary_times_ttf_end },
+    { "roboto", _binary_roboto_ttf_start, _binary_roboto_ttf_end },
+    { "tinos", _binary_tinos_ttf_start, _binary_tinos_ttf_end },
 };
 
-const int G_EMBEDDED_FONTS_COUNT = 4;
+const int G_EMBEDDED_FONTS_COUNT = 3;
 
 #ifdef __cplusplus
 }

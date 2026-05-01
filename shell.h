@@ -67,6 +67,10 @@ static bool storage_scanned = false;
 static bool usb_scanned = false;
 static bool vfs_ready = false;
 static bool shell_ttf_enabled = true;
+static uint32_t* shell_fb_shadow = nullptr;
+static uint32_t shell_fb_shadow_width = 0;
+static uint32_t shell_fb_shadow_height = 0;
+static bool shell_present_deferred = false;
 static uint32_t edit_origin_x = SHELL_X0;
 static uint32_t edit_origin_y = 0;
 static char shell_current_path[260] = "C:\\";
@@ -120,8 +124,17 @@ int shell_descender_room() {
     return (room > 0) ? room : 0;
 }
 
-void shell_begin_draw() { fb_acquire(); cursor_hide_nolock(); }
-void shell_end_draw() { cursor_show_nolock(); fb_release(); }
+void shell_begin_draw() {
+    if (shell_present_deferred) return;
+    fb_acquire();
+    cursor_hide_nolock();
+}
+
+void shell_end_draw() {
+    if (shell_present_deferred) return;
+    cursor_show_nolock();
+    fb_release();
+}
 
 void itoa_dec(uint64_t val, char* buf) {
     if (val == 0) { buf[0] = '0'; buf[1] = '\0'; return; }
@@ -253,13 +266,23 @@ int shell_glyph_advance_for(int codepoint) {
 
 void shell_draw_codepoint_nolock(int codepoint, int x) {
     if (shell_use_ttf()) {
-        draw_times_new_roman_glyph(g_fb, (int)g_width, (int)g_max_y + 1, codepoint, x, (int)g_cursor_y, FONT_SIZE);
+        if (shell_fb_shadow) {
+            draw_times_new_roman_glyph(shell_fb_shadow, (int)g_width, (int)shell_fb_shadow_height, codepoint, x, (int)g_cursor_y, FONT_SIZE);
+        }
+        if (!shell_present_deferred) {
+            draw_times_new_roman_glyph(g_fb, (int)g_width, (int)g_max_y + 1, codepoint, x, (int)g_cursor_y, FONT_SIZE);
+        }
     }
     else {
         char ch = (codepoint >= 32 && codepoint <= 126) ? (char)codepoint : '?';
         int draw_y = (int)g_cursor_y - 8;
         if (draw_y < 0) draw_y = 0;
-        draw_char(g_fb, g_width, ch, (uint32_t)x, (uint32_t)draw_y, 0x00FFFFFF);
+        if (shell_fb_shadow) {
+            draw_char(shell_fb_shadow, g_width, ch, (uint32_t)x, (uint32_t)draw_y, 0x00FFFFFF);
+        }
+        if (!shell_present_deferred) {
+            draw_char(g_fb, g_width, ch, (uint32_t)x, (uint32_t)draw_y, 0x00FFFFFF);
+        }
     }
 }
 
@@ -269,23 +292,166 @@ void shell_mark_edit_origin() {
 }
 
 void shell_print_nolock(const char* str);
+
+void shell_copy_pixels_up(uint32_t* dst, const uint32_t* src, uint64_t pixels) {
+    uint64_t qwords = pixels / 2;
+    void* d = dst;
+    const void* s = src;
+
+    asm volatile(
+        "cld\n"
+        "rep movsq"
+        : "+D"(d), "+S"(s), "+c"(qwords)
+        :
+        : "memory"
+    );
+
+    if (pixels & 1) {
+        *(uint32_t*)d = *(const uint32_t*)s;
+    }
+}
+
+void shell_clear_pixels(uint32_t* dst, uint64_t pixels, uint32_t color) {
+    uint64_t qwords = pixels / 2;
+    uint64_t packed = ((uint64_t)color << 32) | (uint64_t)color;
+    void* d = dst;
+
+    asm volatile(
+        "cld\n"
+        "rep stosq"
+        : "+D"(d), "+c"(qwords)
+        : "a"(packed)
+        : "memory"
+    );
+
+    if (pixels & 1) {
+        *(uint32_t*)d = color;
+    }
+}
+
+bool shell_shadow_ensure() {
+    uint32_t height = g_max_y + 10;
+    if (height == 0 || g_width == 0) return false;
+
+    if (shell_fb_shadow &&
+        shell_fb_shadow_width == g_width &&
+        shell_fb_shadow_height == height) {
+        return true;
+    }
+
+    uint64_t pixels = (uint64_t)g_width * height;
+    uint32_t* buffer = (uint32_t*)malloc(pixels * sizeof(uint32_t));
+    if (!buffer) return false;
+
+    bool mouse_cursor_was_visible = cursor_saved_valid;
+    if (mouse_cursor_was_visible) {
+        cursor_hide_nolock();
+    }
+
+    shell_copy_pixels_up(buffer, g_fb, pixels);
+
+    if (mouse_cursor_was_visible) {
+        cursor_show_nolock();
+    }
+
+    shell_fb_shadow = buffer;
+    shell_fb_shadow_width = g_width;
+    shell_fb_shadow_height = height;
+    return true;
+}
+
+bool shell_shadow_ensure_locked() {
+    bool already_ready =
+        shell_fb_shadow &&
+        shell_fb_shadow_width == g_width &&
+        shell_fb_shadow_height == g_max_y + 10;
+
+    if (already_ready) return true;
+
+    fb_acquire();
+    bool ok = shell_shadow_ensure();
+    fb_release();
+    return ok;
+}
+
+void shell_blit_shadow_rows(int y, int rows) {
+    if (!shell_fb_shadow || rows <= 0) return;
+    if (y < 0) {
+        rows += y;
+        y = 0;
+    }
+    if (rows <= 0) return;
+    if ((uint32_t)(y + rows) > shell_fb_shadow_height) {
+        rows = (int)shell_fb_shadow_height - y;
+    }
+    if (rows <= 0) return;
+
+    shell_copy_pixels_up(
+        g_fb + (uint64_t)y * g_width,
+        shell_fb_shadow + (uint64_t)y * g_width,
+        (uint64_t)rows * g_width
+    );
+}
+
+void shell_present_all() {
+    if (!shell_fb_shadow) return;
+    shell_blit_shadow_rows(0, (int)shell_fb_shadow_height);
+}
+
+void shell_begin_present_batch() {
+    if (shell_shadow_ensure_locked()) {
+        shell_present_deferred = true;
+    }
+}
+
+void shell_end_present_batch() {
+    if (!shell_present_deferred) return;
+    shell_present_deferred = false;
+    fb_acquire();
+    cursor_hide_nolock();
+    shell_present_all();
+    cursor_show_nolock();
+    fb_release();
+}
+
+void shell_draw_rect_nolock(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color) {
+    if (shell_fb_shadow) {
+        draw_rect(shell_fb_shadow, g_width, x, y, w, h, color);
+    }
+    if (!shell_present_deferred) {
+        draw_rect(g_fb, g_width, x, y, w, h, color);
+    }
+}
+
 void shell_scroll_if_needed() {
     int line_h = shell_line_height();
     int descender = shell_descender_room();
     if (g_cursor_y + (uint32_t)descender <= g_max_y) return;
+    if (line_h <= 0 || g_width == 0) return;
 
     int start_y = (int)g_start_y - shell_font_baseline();
     if (start_y < 0) start_y = 0;
 
-    for (int y = start_y; y + line_h <= (int)g_max_y; y++) {
-        for (uint32_t x = 0; x < g_width; x++) {
-            g_fb[(uint32_t)y * g_width + x] = g_fb[(uint32_t)(y + line_h) * g_width + x];
-        }
+    int bottom_y = (int)g_max_y + 1;
+    int src_y = start_y + line_h;
+    uint32_t* scroll_fb = shell_shadow_ensure() ? shell_fb_shadow : g_fb;
+
+    if (src_y < bottom_y) {
+        uint64_t copy_rows = (uint64_t)(bottom_y - src_y);
+        shell_copy_pixels_up(
+            scroll_fb + (uint64_t)start_y * g_width,
+            scroll_fb + (uint64_t)src_y * g_width,
+            copy_rows * g_width
+        );
     }
 
-    int clear_y = (int)g_max_y - (line_h - 1);
-    if (clear_y < 0) clear_y = 0;
-    draw_rect(g_fb, g_width, 0, (uint32_t)clear_y, g_width, (uint32_t)line_h, 0x00000000);
+    int clear_y = bottom_y - line_h;
+    if (clear_y < start_y) clear_y = start_y;
+    uint64_t clear_rows = (uint64_t)(bottom_y - clear_y);
+    shell_clear_pixels(scroll_fb + (uint64_t)clear_y * g_width, clear_rows * g_width, 0x00000000);
+    if (scroll_fb == shell_fb_shadow && !shell_present_deferred) {
+        shell_blit_shadow_rows(start_y, bottom_y - start_y);
+    }
     g_cursor_y -= line_h;
 }
 void shell_newline_nolock() {
@@ -341,7 +507,7 @@ void shell_redraw_input_line_nolock() {
     int line_h = shell_line_height();
     int top_y = (int)edit_origin_y - shell_font_baseline();
     if (top_y < 0) top_y = 0;
-    draw_rect(g_fb, g_width, edit_origin_x, (uint32_t)top_y, g_width - edit_origin_x, (uint32_t)line_h, 0x00000000);
+    shell_draw_rect_nolock(edit_origin_x, (uint32_t)top_y, g_width - edit_origin_x, (uint32_t)line_h, 0x00000000);
 
     g_cursor_x = edit_origin_x;
     g_cursor_y = edit_origin_y;
@@ -377,8 +543,24 @@ void shell_draw_text_cursor_nolock(bool show) {
     int y = (int)g_cursor_y - shell_font_baseline();
     if (x < 0 || x + 2 >(int)g_width) return;
     if (y < 0) y = 0;
-    uint32_t color = show ? 0xFFFFFFFF : 0x00000000;
-    draw_rect(g_fb, g_width, (uint32_t)x, (uint32_t)y, 2, (uint32_t)h, color);
+
+    if (show) {
+        draw_rect(g_fb, g_width, (uint32_t)x, (uint32_t)y, 2, (uint32_t)h, 0xFFFFFFFF);
+    }
+    else if (shell_fb_shadow) {
+        for (int row = 0; row < h; row++) {
+            int py = y + row;
+            if ((uint32_t)py >= shell_fb_shadow_height) break;
+            g_fb[(uint64_t)py * g_width + (uint32_t)x] =
+                shell_fb_shadow[(uint64_t)py * g_width + (uint32_t)x];
+            g_fb[(uint64_t)py * g_width + (uint32_t)x + 1] =
+                shell_fb_shadow[(uint64_t)py * g_width + (uint32_t)x + 1];
+        }
+    }
+    else {
+        draw_rect(g_fb, g_width, (uint32_t)x, (uint32_t)y, 2, (uint32_t)h, 0x00000000);
+    }
+
     cursor_visible = show;
 }
 
@@ -533,7 +715,12 @@ void shell_draw_glyph_nolock(int codepoint, bool track_for_backspace) {
         char ch = (codepoint >= 32 && codepoint <= 126) ? (char)codepoint : '?';
         int draw_y = (int)g_cursor_y - 8;
         if (draw_y < 0) draw_y = 0;
-        draw_char(g_fb, g_width, ch, (uint32_t)pre_x, (uint32_t)draw_y, 0x00FFFFFF);
+        if (shell_fb_shadow) {
+            draw_char(shell_fb_shadow, g_width, ch, (uint32_t)pre_x, (uint32_t)draw_y, 0x00FFFFFF);
+        }
+        if (!shell_present_deferred) {
+            draw_char(g_fb, g_width, ch, (uint32_t)pre_x, (uint32_t)draw_y, 0x00FFFFFF);
+        }
 
         if (track_for_backspace) {
             line_pre_x[line_len] = pre_x;
@@ -564,7 +751,12 @@ void shell_draw_glyph_nolock(int codepoint, bool track_for_backspace) {
         kern = 0;
     }
 
-    draw_times_new_roman_glyph(g_fb, (int)g_width, (int)g_max_y + 1, codepoint, draw_x, (int)g_cursor_y, FONT_SIZE);
+    if (shell_fb_shadow) {
+        draw_times_new_roman_glyph(shell_fb_shadow, (int)g_width, (int)shell_fb_shadow_height, codepoint, draw_x, (int)g_cursor_y, FONT_SIZE);
+    }
+    if (!shell_present_deferred) {
+        draw_times_new_roman_glyph(g_fb, (int)g_width, (int)g_max_y + 1, codepoint, draw_x, (int)g_cursor_y, FONT_SIZE);
+    }
 
     if (track_for_backspace) {
         int clear_left = shell_min(draw_x + left, draw_x);
@@ -618,6 +810,9 @@ void shell_println_nolock(const char* str) {
 void cmd_clear() {
     shell_begin_draw();
     clear_screen(g_fb, g_width, g_max_y + 10, 0x00000000);
+    if (shell_fb_shadow) {
+        shell_clear_pixels(shell_fb_shadow, (uint64_t)g_width * shell_fb_shadow_height, 0x00000000);
+    }
     g_cursor_x = SHELL_X0;
     g_cursor_y = g_start_y;
     shell_reset_line_edit_state();
@@ -1378,6 +1573,7 @@ void shell() {
     shell_ttf_enabled = is_active_font_available();
     shell_println(shell_use_ttf() ? "Schwarz OS - TTF Shell" : "Schwarz OS - Bitmap Shell");
     shell_prompt();
+    shell_shadow_ensure_locked();
 
     uint64_t last_blink = timer_ticks;
     bool blink_state = true;
@@ -1427,10 +1623,12 @@ void shell() {
                     history_current = nullptr;
                     history_browsing = false;
                 }
+                shell_begin_present_batch();
                 shell_execute(line_buf);
                 shell_reset_line_edit_state();
                 line_cursor = 0;
                 shell_prompt();
+                shell_end_present_batch();
             }
             else {
                 shell_reset_line_edit_state();
