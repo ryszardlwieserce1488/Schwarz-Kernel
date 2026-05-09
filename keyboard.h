@@ -58,6 +58,8 @@ static bool ctrl_pressed = false;
 static bool alt_pressed = false;
 static bool kb_extended_next = false;
 static uint8_t kb_pause_ignore = 0;
+static bool key_state[256] = { false }; // Tablica stanów klawiszy (scancody 0..127)
+static bool key_state_ext[256] = { false }; // Tablica stanów klawiszy rozszerzonych
 
 static inline void keyboard_reset_state() {
     shift_pressed = false;
@@ -65,6 +67,10 @@ static inline void keyboard_reset_state() {
     alt_pressed = false;
     kb_extended_next = false;
     kb_pause_ignore = 0;
+    for (int i = 0; i < 256; i++) {
+        key_state[i] = false;
+        key_state_ext[i] = false;
+    }
 }
 
 #define SC_BACKSPACE  0x0E
@@ -101,9 +107,13 @@ static inline void keyboard_handle_byte(uint8_t sc) {
     const bool released = sc & 0x80;
     const uint8_t code = sc & 0x7F;
 
-    if (code == SC_LSHIFT || code == SC_RSHIFT) { shift_pressed = !released; return; }
-    if (code == SC_LCTRL) { ctrl_pressed = !released; return; }
-    if (code == SC_LALT) { alt_pressed = !released; return; }
+    if (code == SC_LSHIFT || code == SC_RSHIFT) { shift_pressed = !released; }
+    if (code == SC_LCTRL) { ctrl_pressed = !released; }
+    if (code == SC_LALT) { alt_pressed = !released; }
+
+    if (extended) key_state_ext[code] = !released;
+    else key_state[code] = !released;
+
     if (released) return;
 
     if (ctrl_pressed && alt_pressed && code == 0x53) { reboot(); }

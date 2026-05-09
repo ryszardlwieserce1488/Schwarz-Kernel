@@ -9,6 +9,7 @@
 #include "usb.h"
 #include "vfs.h"
 #include "fonts.h"
+#include "hcr.h"
 extern "C" void fb_acquire();
 extern "C" void fb_release();
 extern uint32_t* g_fb;
@@ -920,7 +921,7 @@ void cmd_compile(const char* line) {
 }
 
 void cmd_help() {
-    shell_println("Dostepne komendy: cd, clear, compiler, dir, disk, echo, help, mem, ticks, type, vol, notatnik, mouse, usb");
+    shell_println("Dostepne komendy: clear, disk/dis, help, mem, ticks, cd, vol, dir, type, echo, notatnik, font, mouse, usb, restart, compile/compiler");
 }
 
 void cmd_restart() {
@@ -1525,6 +1526,7 @@ void shell_execute(const char* line) {
     else if (str_eq(line, "mouse")) cmd_mouse();
     else if (str_eq(line, "usb")) cmd_usb();
     else if (str_eq(line, "restart")) cmd_restart();
+    else if (str_eq(line, "hcr")) hcr_game_loop();
     else if (str_eq(line, "compile") || str_starts_with(line, "compile ")) cmd_compile(line);
     else if (str_eq(line, "compiler") || str_starts_with(line, "compiler ")) cmd_compile(line);
     else if (line[0] != '\0') { shell_print("Nieznana: "); shell_println(line); }

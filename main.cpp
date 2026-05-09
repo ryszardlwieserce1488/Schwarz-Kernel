@@ -50,16 +50,45 @@ struct BootInfo {
     BootVolumeHandoff boot_volume;
 };
 extern "C" void* memset(void* dst, int val, unsigned long long n) {
-    unsigned char* p = (unsigned char*)dst;
-    while (n--) *p++ = (unsigned char)val;
-    return dst;
+    void* ret = dst;
+    unsigned long long dwords = n / 8;
+    unsigned long long bytes = n % 8;
+    unsigned long long val64 = (unsigned char)val;
+    val64 = val64 | (val64 << 8) | (val64 << 16) | (val64 << 24);
+    val64 = val64 | (val64 << 32);
+    asm volatile(
+        "rep stosq\n\t"
+        "mov %3, %%rcx\n\t"
+        "rep stosb"
+        : "+D"(dst), "+c"(dwords)
+        : "a"(val64), "r"(bytes)
+        : "memory"
+    );
+    return ret;
 }
 
 extern "C" void* memcpy(void* dst, const void* src, unsigned long long n) {
-    unsigned char* d = (unsigned char*)dst;
-    const unsigned char* s = (const unsigned char*)src;
-    while (n--) *d++ = *s++;
-    return dst;
+    void* ret = dst;
+    unsigned long long dwords = n / 8;
+    unsigned long long bytes = n % 8;
+    asm volatile(
+        "rep movsq\n\t"
+        "mov %3, %%rcx\n\t"
+        "rep movsb"
+        : "+D"(dst), "+S"(src), "+c"(dwords)
+        : "r"(bytes)
+        : "memory"
+    );
+    return ret;
+}
+
+extern "C" void memset32(void* dst, uint32_t val, unsigned long long count32) {
+    asm volatile(
+        "rep stosl"
+        : "+D"(dst), "+c"(count32)
+        : "a"(val)
+        : "memory"
+    );
 }
 
 extern "C" unsigned long long strlen(const char* s) {
@@ -72,17 +101,15 @@ void put_pixel(uint32_t* fb, uint32_t width, uint32_t x, uint32_t y, uint32_t co
 }
 
 void clear_screen(uint32_t* fb, uint32_t width, uint32_t height, uint32_t color) {
-    for (uint32_t y = 0; y < height; y++)
-        for (uint32_t x = 0; x < width; x++)
-            fb[y * width + x] = color;
+    memset32(fb, color, (unsigned long long)width * height);
 }
 
 void draw_rect(uint32_t* fb, uint32_t width,
     uint32_t x, uint32_t y, uint32_t w, uint32_t h,
     uint32_t color) {
-    for (uint32_t row = y; row < y + h; row++)
-        for (uint32_t col = x; col < x + w; col++)
-            fb[row * width + col] = color;
+    for (uint32_t row = y; row < y + h; row++) {
+        memset32(&fb[row * width + x], color, w);
+    }
 }
 uint8_t font8x8_basic[128][8] = {
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},   // U+0000 (nul)
@@ -281,11 +308,18 @@ void itoa_hex(uint64_t val, char* buf) {
     }
     buf[18] = '\0';
 }
+extern "C" volatile bool g_hcr_running = false;
+
 void ui_task() {
     uint64_t last_clock_ticks = ~0ULL;
     uint64_t last_blink_phase = ~0ULL;
 
     while (1) {
+        if (g_hcr_running) {
+            asm volatile("hlt");
+            continue;
+        }
+
         uint64_t ticks_snapshot = timer_ticks;
         uint64_t blink_phase = ticks_snapshot / 25;
         bool needs_clock = ticks_snapshot != last_clock_ticks;

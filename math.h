@@ -1,4 +1,4 @@
-﻿// math.h  — stub dla kernela, żeby STB się nie poskarżył
+// math.h  — stub dla kernela, żeby STB się nie poskarżył
 #pragma once
 
 // STB używa tych funkcji, ale my je nadpisujemy makrami
@@ -124,7 +124,7 @@ static inline double acos(double x) {
     if (x > 1.0) x = 1.0;
     if (x < -1.0) x = -1.0;
     // asin(x) = atan(x / sqrt(1 - x²))
-    double asin_x = my_atan(x / my_sqrt((float)(1.0 - x * x)));
+    double asin_x = my_atan(x / sqrtf((float)(1.0 - x * x)));
     return PI / 2.0 - asin_x;
 }
 // --- powf ---
